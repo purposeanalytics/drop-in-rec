@@ -66,6 +66,10 @@ jobs:
       - name: Build Vite app
         run: npm run build
 
+      # ----- Regenerate sitemap with today's date and active locations -----
+      - name: Generate sitemap
+        run: node scripts/generate-sitemap.cjs
+
       # ----- Deploy to GitHub Pages using official actions -----
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
