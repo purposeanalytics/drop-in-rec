@@ -47,13 +47,16 @@ jobs:
       - name: Run drop-in data download script
         run: node scripts/download-drop-in.cjs
 
+      - name: Geocode locations missing from GeoJSON
+        run: node scripts/geocode-locations.cjs
+
       # ----- Commit JSON changes back to main (if any) -----
       - name: Commit and push changes (if any)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add "public/Parks and Recreation Facilities - 4326.geojson" "public/Locations.json" "public/Drop-in.json"
+          git add "public/Parks and Recreation Facilities - 4326.geojson" "public/Locations.json" "public/Drop-in.json" "public/LocationCoordinates.json"
 
           if git diff --cached --quiet; then
             echo "No changes to commit"

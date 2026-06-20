@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAllResources } from '../services/api';
 import { getCurrentDate } from '../utils/dateTimeUtils';
-import { loadGeoJSONData, createLocationURLMap, createLocationCoordsMap } from '../services/geojson';
+import { loadGeoJSONData, createLocationURLMap, createLocationCoordsMap, loadFallbackCoordinates } from '../services/geojson';
 
 interface Location {
   _id: number;
@@ -55,10 +55,11 @@ export const useAppData = () => {
         setIsInitialLoading(true);
         setError(null);
         
-        // Load recreation data and GeoJSON data in parallel
-        const [{ locations, dropIns }, geoJSONData] = await Promise.all([
+        // Load recreation data, GeoJSON, and fallback coordinates in parallel
+        const [{ locations, dropIns }, geoJSONData, fallbackCoords] = await Promise.all([
           getAllResources(),
-          loadGeoJSONData()
+          loadGeoJSONData(),
+          loadFallbackCoordinates()
         ]);
         
         // Filter drop-ins to only include programs available in the upcoming week
@@ -84,6 +85,11 @@ export const useAppData = () => {
         // Create URL, address, and coordinates maps from GeoJSON data
         const urlMap = createLocationURLMap(geoJSONData);
         const coordsMap = createLocationCoordsMap(geoJSONData);
+
+        // Fill in coordinates for locations missing from the GeoJSON
+        for (const [id, coords] of fallbackCoords) {
+          if (!coordsMap.has(id)) coordsMap.set(id, coords);
+        }
         const addressMap = new Map<string, string>();
         
         geoJSONData.features.forEach(feature => {

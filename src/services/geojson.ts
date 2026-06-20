@@ -97,6 +97,22 @@ export const createLocationCoordsMap = (geoJSONData: GeoJSONData): Map<string, {
   return coordsMap;
 };
 
+// Load fallback coordinates for locations missing from the GeoJSON
+export const loadFallbackCoordinates = async (): Promise<Map<string, { lat: number; lng: number }>> => {
+  const map = new Map<string, { lat: number; lng: number }>();
+  try {
+    const response = await fetch('./LocationCoordinates.json');
+    if (!response.ok) return map;
+    const data: Record<string, [number, number]> = await response.json();
+    for (const [id, [lng, lat]] of Object.entries(data)) {
+      map.set(id, { lat, lng });
+    }
+  } catch {
+    // Non-fatal: fall back to GeoJSON-only coordinates
+  }
+  return map;
+};
+
 // Get URL for a specific location ID
 export const getLocationURL = (locationId: string, urlMap: Map<string, string>): string | null => {
   return urlMap.get(locationId) || null;
