@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAllResources } from '../services/api';
 import { getCurrentDate } from '../utils/dateTimeUtils';
-import { loadGeoJSONData, createLocationURLMap, createLocationCoordsMap, loadFallbackCoordinates } from '../services/geojson';
+import { loadGeoJSONData, createLocationURLMap, createLocationCoordsMap, createLocationPhoneMap, loadFallbackCoordinates } from '../services/geojson';
 
 interface Location {
   _id: number;
@@ -45,6 +45,7 @@ export const useAppData = () => {
   const [allLocations, setAllLocations] = useState<Location[]>([]);
   const [locationURLMap, setLocationURLMap] = useState<Map<string, string>>(new Map());
   const [locationAddressMap, setLocationAddressMap] = useState<Map<string, string>>(new Map());
+  const [locationPhoneMap, setLocationPhoneMap] = useState<Map<string, string>>(new Map());
   const [locationCoordsMap, setLocationCoordsMap] = useState<Map<string, { lat: number; lng: number }>>(new Map());
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,9 +83,10 @@ export const useAppData = () => {
         // Extract unique course titles and locations from filtered data
         const uniqueCourseTitles = [...new Set(filteredDropIns.map(d => d["Course Title"]).filter(Boolean))].sort();
         
-        // Create URL, address, and coordinates maps from GeoJSON data
+        // Create URL, address, phone, and coordinates maps from GeoJSON data
         const urlMap = createLocationURLMap(geoJSONData);
         const coordsMap = createLocationCoordsMap(geoJSONData);
+        const phoneMap = createLocationPhoneMap(geoJSONData);
 
         // Add City of Toronto URLs for locations missing from the GeoJSON
         locations.forEach(loc => {
@@ -113,6 +115,7 @@ export const useAppData = () => {
         setAllLocations(locations);
         setLocationURLMap(urlMap);
         setLocationAddressMap(addressMap);
+        setLocationPhoneMap(phoneMap);
         setLocationCoordsMap(coordsMap);
       } catch (err) {
         console.error('Error loading data:', err);
@@ -131,6 +134,7 @@ export const useAppData = () => {
     allLocations,
     locationURLMap,
     locationAddressMap,
+    locationPhoneMap,
     locationCoordsMap,
     isInitialLoading,
     error

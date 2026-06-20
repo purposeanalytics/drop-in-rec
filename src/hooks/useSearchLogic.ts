@@ -137,6 +137,7 @@ export const useSearchLogic = (
   allLocations: Location[],
   locationURLMap: Map<string, string>,
   locationAddressMap: Map<string, string>,
+  locationPhoneMap: Map<string, string>,
   locationCoordsMap: Map<string, { lat: number; lng: number }>
 ) => {
   const [filters, setFilters] = useState<SearchFilters>({
@@ -157,7 +158,7 @@ export const useSearchLogic = (
 
   // Extract unique locations with coordinates for the map and location list
   const mapLocations = useMemo(() => {
-    const uniqueLocations = new Map<string, { name: string; lat: number; lng: number; address?: string; url?: string }>();
+    const uniqueLocations = new Map<string, { name: string; lat: number; lng: number; address?: string; phone?: string; url?: string }>();
     
     // Create a mapping from location name to location ID
     const locationNameToIdMap = new Map<string, string>();
@@ -203,15 +204,17 @@ export const useSearchLogic = (
               formattedAddress = streetAddress ? `${streetAddress}\n${cityLine}` : cityLine;
             }
             
-            // Get URL from locationURLMap using location ID
+            // Get URL and phone from maps using location ID
             const locationIdForURL = locationData ? locationData["Location ID"].toString() : locationId;
             const locationURL = locationURLMap.get(locationIdForURL) || undefined;
-            
+            const locationPhone = locationPhoneMap.get(locationIdForURL) || undefined;
+
             uniqueLocations.set(locationName, {
               name: locationName,
               lat: coords.lat,
               lng: coords.lng,
               address: formattedAddress || undefined,
+              phone: locationPhone,
               url: locationURL
             });
           }
@@ -281,15 +284,17 @@ export const useSearchLogic = (
             
             formattedAddress = streetAddress ? `${streetAddress}\n${cityLine}` : cityLine;
             
-            // Get URL from locationURLMap using location ID
+            // Get URL and phone from maps using location ID
             const locationId = location["Location ID"].toString();
             const locationURL = locationURLMap.get(locationId) || undefined;
-            
+            const locationPhone = locationPhoneMap.get(locationId) || undefined;
+
             uniqueLocations.set(locationName, {
               name: locationName,
               lat: coords.lat,
               lng: coords.lng,
               address: formattedAddress || undefined,
+              phone: locationPhone,
               url: locationURL
             });
           }
@@ -298,7 +303,7 @@ export const useSearchLogic = (
     }
     
     return Array.from(uniqueLocations.values());
-  }, [results, allLocations, allDropIns, locationURLMap, filters.location, hasSearched]);
+  }, [results, allLocations, allDropIns, locationURLMap, locationPhoneMap, filters.location, hasSearched]);
 
   // Create a list of location names that should be available in the dropdown
   const availableLocationNames = useMemo(() => {

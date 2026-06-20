@@ -7,6 +7,7 @@ interface Location {
   lat: number;
   lng: number;
   address?: string;
+  phone?: string;
   url?: string;
 }
 
@@ -339,17 +340,26 @@ const LocationMap: React.FC<LocationMapProps> = ({
             const escapedLocationName = location.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             const escapedCategoryId = cat.id.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             const isSelected = currentCategory === cat.id && selectedLocations.includes(location.name);
-            const buttonClasses = isSelected
-              ? 'category-filter-btn inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#13a4ec]/20 dark:bg-[#13a4ec]/30 text-[#13a4ec] dark:text-[#13a4ec] border-2 border-[#13a4ec] dark:border-[#13a4ec] hover:bg-[#13a4ec]/30 dark:hover:bg-[#13a4ec]/40 transition-colors focus:outline-none'
-              : 'category-filter-btn inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400 hover:bg-[#13a4ec]/10 dark:hover:bg-[#13a4ec]/20 hover:text-[#13a4ec] dark:hover:text-[#13a4ec] transition-colors focus:outline-none border-0';
+            const restingStyle = isSelected
+              ? 'display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:0.5rem;background:rgba(19,164,236,0.2);color:#13a4ec;border:2px solid #13a4ec;outline:none;cursor:pointer;transition:background 0.15s;'
+              : 'display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:0.5rem;background:#f1f5f9;color:#6b7280;border:0;outline:none;cursor:pointer;transition:background 0.15s,color 0.15s;';
+            const hoverIn = isSelected
+              ? "this.style.background='rgba(19,164,236,0.3)'"
+              : "this.style.background='rgba(19,164,236,0.1)';this.style.color='#13a4ec'";
+            const hoverOut = isSelected
+              ? "this.style.background='rgba(19,164,236,0.2)'"
+              : "this.style.background='#f1f5f9';this.style.color='#6b7280'";
             return `
-              <button 
-                class="${buttonClasses}"
+              <button
+                class="category-filter-btn"
+                style="${restingStyle}"
                 data-location="${escapedLocationName}"
                 data-category="${escapedCategoryId}"
                 title="${cat.name}"
                 tabindex="-1"
                 onfocus="this.blur()"
+                onmouseover="${hoverIn}"
+                onmouseout="${hoverOut}"
               >
                 <span class="material-symbols-outlined text-base">${cat.icon}</span>
               </button>
@@ -357,8 +367,8 @@ const LocationMap: React.FC<LocationMapProps> = ({
           }).join('');
 
           categoryFiltersHTML = `
-            <div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
-              <p class="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">At this location:</p>
+            <div class="mt-2 pt-2 border-t border-slate-200">
+              <p class="text-xs font-semibold text-slate-600 mb-2">Programs at this location:</p>
               <div class="flex flex-wrap gap-1.5">
                 ${categoryButtons}
               </div>
@@ -369,10 +379,21 @@ const LocationMap: React.FC<LocationMapProps> = ({
         const popup = new (window as any).maplibregl.Popup().setHTML(`
               <div class="p-2">
                 <h3 class="font-semibold text-base text-slate-800 dark:text-slate-800">${location.name}</h3>
-                ${location.address ? `<p class="mt-1 text-sm text-slate-500 dark:text-slate-500 whitespace-pre-line">${location.address}</p>` : ''}
+                ${location.address ? `
+                  <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.address + ', Toronto, ON')}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:flex-start;gap:6px;margin-top:4px;color:#64748b;text-decoration:none;background:none;outline:none;" onmouseover="this.style.color='#13a4ec'" onmouseout="this.style.color='#64748b'" title="Open in Google Maps">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;margin-top:3px;" width="14" height="14"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                    <span style="font-size:0.875rem;white-space:pre-line;">${location.address}</span>
+                  </a>
+                ` : ''}
+                ${location.phone ? `
+                  <a href="tel:${location.phone}" style="display:flex;align-items:center;gap:6px;margin-top:4px;color:#64748b;text-decoration:none;background:none;" onmouseover="this.style.color='#13a4ec'" onmouseout="this.style.color='#64748b'" title="Call">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;" width="14" height="14"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                    <span style="font-size:0.875rem;">${location.phone}</span>
+                  </a>
+                ` : ''}
                 ${categoryFiltersHTML}
                 ${location.url ? `
-                  <a class="p-1 mt-4 inline-flex items-center justify-center line-height-1 w-full bg-[#13a4ec]/10 dark:bg-[#13a4ec]/20 text-gray-700 dark:text-gray-700 text-sm font-medium px-4 rounded-lg hover:text-black dark:hover:text-white hover:bg-[#13a4ec]/1 dark:hover:bg-[#13a4ec]/30 hover:shadow-lg hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#13a4ec] focus:ring-offset-2 focus:bg-[#13a4ec]/20 dark:focus:bg-[#13a4ec]/30 focus:text-[#13a4ec] dark:focus:text-[#13a4ec] focus:shadow-lg transition-all duration-200 ease-in-out" href="${location.url}" target="_blank" rel="noopener noreferrer">
+                  <a class="p-1 mt-3 inline-flex items-center justify-center line-height-1 w-full bg-[#13a4ec]/10 dark:bg-[#13a4ec]/20 text-gray-700 dark:text-gray-700 text-sm font-medium px-4 rounded-lg hover:text-black dark:hover:text-white hover:bg-[#13a4ec]/1 dark:hover:bg-[#13a4ec]/30 hover:shadow-lg hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#13a4ec] focus:ring-offset-2 focus:bg-[#13a4ec]/20 dark:focus:bg-[#13a4ec]/30 focus:text-[#13a4ec] dark:focus:text-[#13a4ec] focus:shadow-lg transition-all duration-200 ease-in-out" href="${location.url}" target="_blank" rel="noopener noreferrer">
                     <span>View on City Website</span>
                     <span class="material-symbols-outlined ml-2 text-base transition-transform duration-200 ease-in-out group-hover:translate-x-1">arrow_right_alt</span>
                   </a>
@@ -687,8 +708,8 @@ const LocationMap: React.FC<LocationMapProps> = ({
             }).join('');
 
             categoryFiltersHTML = `
-              <div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
-                <p class="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">At this location:</p>
+              <div class="mt-2 pt-2 border-t border-slate-200">
+                <p class="text-xs font-semibold text-slate-600 mb-2">Programs at this location:</p>
                 <div class="flex flex-wrap gap-1.5">
                   ${categoryButtons}
                 </div>
@@ -702,7 +723,7 @@ const LocationMap: React.FC<LocationMapProps> = ({
               ${location.address ? `<p class="mt-1 text-sm text-slate-500 dark:text-slate-500 whitespace-pre-line">${location.address}</p>` : ''}
               ${categoryFiltersHTML}
               ${location.url ? `
-                <a class="p-1 mt-4 inline-flex items-center justify-center line-height-1 w-full bg-[#13a4ec]/10 dark:bg-[#13a4ec]/20 text-gray-700 dark:text-gray-700 text-sm font-medium px-4 rounded-lg hover:text-black dark:hover:text-white hover:bg-[#13a4ec]/1 dark:hover:bg-[#13a4ec]/30 hover:shadow-lg hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#13a4ec] focus:ring-offset-2 transition-all duration-200 ease-in-out" href="${location.url}" target="_blank" rel="noopener noreferrer">
+                <a class="p-1 mt-3 inline-flex items-center justify-center line-height-1 w-full bg-[#13a4ec]/10 dark:bg-[#13a4ec]/20 text-gray-700 dark:text-gray-700 text-sm font-medium px-4 rounded-lg hover:text-black dark:hover:text-white hover:bg-[#13a4ec]/1 dark:hover:bg-[#13a4ec]/30 hover:shadow-lg hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#13a4ec] focus:ring-offset-2 transition-all duration-200 ease-in-out" href="${location.url}" target="_blank" rel="noopener noreferrer">
                   <span>View on City Website</span>
                   <span class="material-symbols-outlined ml-2 text-base transition-transform duration-200 ease-in-out group-hover:translate-x-1">arrow_right_alt</span>
                 </a>

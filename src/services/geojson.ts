@@ -113,6 +113,19 @@ export const loadFallbackCoordinates = async (): Promise<Map<string, { lat: numb
   return map;
 };
 
+// Create a mapping from location IDs to their phone numbers
+export const createLocationPhoneMap = (geoJSONData: GeoJSONData): Map<string, string> => {
+  const phoneMap = new Map<string, string>();
+  geoJSONData.features.forEach(feature => {
+    const locationId = feature.properties.LOCATIONID;
+    const phone = feature.properties.PHONE;
+    if (locationId && phone && phone !== 'None') {
+      phoneMap.set(locationId, phone);
+    }
+  });
+  return phoneMap;
+};
+
 // Get URL for a specific location ID
 export const getLocationURL = (locationId: string, urlMap: Map<string, string>): string | null => {
   return urlMap.get(locationId) || null;

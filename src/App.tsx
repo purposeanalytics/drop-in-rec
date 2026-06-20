@@ -16,15 +16,16 @@ import {
 } from './utils/structuredData';
 
 function App() {
-  const { 
-    allCourseTitles, 
-    allDropIns, 
-    allLocations, 
-    locationURLMap, 
-    locationAddressMap, 
-    locationCoordsMap, 
-    isInitialLoading, 
-    error 
+  const {
+    allCourseTitles,
+    allDropIns,
+    allLocations,
+    locationURLMap,
+    locationAddressMap,
+    locationPhoneMap,
+    locationCoordsMap,
+    isInitialLoading,
+    error
   } = useAppData();
 
   const {
@@ -40,7 +41,7 @@ function App() {
     availableLocationNames,
     performSearch,
     handleLocationSelect
-  } = useSearchLogic(allDropIns, allLocations, locationURLMap, locationAddressMap, locationCoordsMap);
+  } = useSearchLogic(allDropIns, allLocations, locationURLMap, locationAddressMap, locationPhoneMap, locationCoordsMap);
 
   const [hoveredLocation, setHoveredLocation] = useState<string | null>(null);
   const locationHasResults = useCallback(
