@@ -77,9 +77,8 @@ export const useSearchForm = (
     
     // Show dropdown when user types
     if (field === 'program') {
-      const newFilters = { ...filters, courseTitle: value };
-      onFiltersChange(newFilters);
-      // Don't auto-search while typing, wait for selection or Enter
+      // Don't update global filters while typing — only on commit (Enter or autocomplete select)
+      // to avoid re-rendering the entire app on every keystroke
     } else if (field === 'location') {
       setSearchInputs(prev => ({ ...prev, [field]: value }));
       // Don't update filters while typing - only when location is selected
@@ -250,15 +249,14 @@ export const useSearchForm = (
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent, field: keyof typeof searchInputs) => {
     if (e.key === 'Enter') {
-      // Hide dropdown and trigger search
       if (field === 'program') {
         const newFilters = { ...filters, courseTitle: searchInputs.program };
-        // Update committed course title when Enter is pressed
         setCommittedCourseTitle(searchInputs.program);
+        onFiltersChange(newFilters);
         onSearch(newFilters);
       }
     }
-  }, [onSearch, filters, searchInputs]);
+  }, [onSearch, onFiltersChange, filters, searchInputs]);
 
   const handleClearAll = useCallback(() => {
     const smartDefaults = getSmartDefaults(allDropIns);

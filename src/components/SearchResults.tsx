@@ -66,12 +66,13 @@ interface SearchResultsProps {
   isLoading: boolean;
   hasSearched: boolean;
   onLocationSelect?: (location: string) => void;
+  onLocationHover?: (location: string | null) => void;
   selectedLocation?: string;
   sortOrder: 'location-name' | 'earliest' | 'latest' | 'open-longest';
   onSortOrderChange: (sortOrder: 'location-name' | 'earliest' | 'latest' | 'open-longest') => void;
 }
 
-const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading, hasSearched, onLocationSelect, selectedLocation, sortOrder, onSortOrderChange }) => {
+const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading, hasSearched, onLocationSelect, onLocationHover, selectedLocation, sortOrder, onSortOrderChange }) => {
   const selectedCardRef = React.useRef<HTMLDivElement>(null);
 
   // Scroll to selected card when location is selected
@@ -219,15 +220,17 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading, hasSe
             
 
             return (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 ref={isFirstOccurrence ? selectedCardRef : null}
                 className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 hover:bg-slate-50 cursor-pointer transition-colors ${
-                  selectedLocation === result.location 
-                    ? 'bg-[#13a4ec]/10' 
+                  selectedLocation === result.location
+                    ? 'bg-[#13a4ec]/10'
                     : ''
                 }`}
                 onClick={() => onLocationSelect?.(result.location)}
+                onMouseEnter={() => onLocationHover?.(result.location)}
+                onMouseLeave={() => onLocationHover?.(null)}
               >
                 <div className="flex flex-col items-center w-16 flex-shrink-0">
                   <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${

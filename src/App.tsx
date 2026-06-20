@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import SearchForm from './components/SearchForm';
 import SearchResults from './components/SearchResults';
 import LocationMap from './components/LocationMap';
@@ -41,6 +41,12 @@ function App() {
     performSearch,
     handleLocationSelect
   } = useSearchLogic(allDropIns, allLocations, locationURLMap, locationAddressMap, locationCoordsMap);
+
+  const [hoveredLocation, setHoveredLocation] = useState<string | null>(null);
+  const locationHasResults = useCallback(
+    (locationName: string) => results.some(result => result.location === locationName),
+    [results]
+  );
 
   // Handle category filter from map popup
   const handleCategoryFilter = (location: string, categoryId: string) => {
@@ -281,6 +287,7 @@ function App() {
                 isLoading={isLoading}
                 hasSearched={hasSearched}
                 onLocationSelect={handleLocationSelect}
+                onLocationHover={setHoveredLocation}
                 selectedLocation={selectedLocation}
                 sortOrder={sortOrder}
                 onSortOrderChange={(sortOrder: 'location-name' | 'earliest' | 'latest' | 'open-longest') => setSortOrder(sortOrder)}
@@ -292,17 +299,15 @@ function App() {
           <main className="flex-1 min-h-0 flex flex-col lg:block">
             {/* Map - Above results on mobile, full area on desktop */}
             <div className="relative h-[300px] lg:h-full w-full">
-              <LocationMap 
+              <LocationMap
                 key={`${mapLocations.length}-${results.length}`}
-                locations={mapLocations} 
-                isLoading={isLoading} 
-                selectedLocation={selectedLocation} 
+                locations={mapLocations}
+                isLoading={isLoading}
+                selectedLocation={selectedLocation}
                 onLocationSelect={handleLocationSelect}
                 selectedLocations={filters.location}
-                locationHasResults={(locationName) => {
-                  // Check if any results exist for this specific location
-                  return results.some(result => result.location === locationName);
-                }}
+                hoveredLocation={hoveredLocation ?? undefined}
+                locationHasResults={locationHasResults}
                 allDropIns={allDropIns}
                 allLocations={allLocations}
                 onCategoryFilter={handleCategoryFilter}
@@ -317,6 +322,7 @@ function App() {
             isLoading={isLoading}
             hasSearched={hasSearched}
             onLocationSelect={handleLocationSelect}
+            onLocationHover={setHoveredLocation}
             selectedLocation={selectedLocation}
             sortOrder={sortOrder}
             onSortOrderChange={setSortOrder}

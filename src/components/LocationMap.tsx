@@ -16,6 +16,7 @@ interface LocationMapProps {
   selectedLocation?: string;
   onLocationSelect?: (location: string) => void;
   selectedLocations?: string[];
+  hoveredLocation?: string;
   locationHasResults?: (locationName: string) => boolean;
   allDropIns?: DropInRecord[];
   allLocations?: LocationType[];
@@ -23,12 +24,13 @@ interface LocationMapProps {
   currentCategory?: string;
 }
 
-const LocationMap: React.FC<LocationMapProps> = ({ 
-  locations, 
-  isLoading, 
-  selectedLocation, 
-  onLocationSelect, 
-  selectedLocations = [], 
+const LocationMap: React.FC<LocationMapProps> = ({
+  locations,
+  isLoading,
+  selectedLocation,
+  onLocationSelect,
+  selectedLocations = [],
+  hoveredLocation,
   locationHasResults,
   allDropIns = [],
   allLocations = [],
@@ -41,6 +43,8 @@ const LocationMap: React.FC<LocationMapProps> = ({
   const [mapboxLoaded, setMapboxLoaded] = useState(false);
   const openPopupLocation = useRef<string | null>(null);
   const preventPopupClose = useRef<boolean>(false);
+  const prevSelectedLocation = useRef<string | null>(null);
+  const tooltip = useRef<HTMLDivElement | null>(null);
 
   // Helper function to get available categories for a location
   const getAvailableCategories = (locationName: string): Array<{ id: string; name: string; icon: string }> => {
@@ -163,19 +167,44 @@ const LocationMap: React.FC<LocationMapProps> = ({
     }
   }, [mapboxLoaded]);
 
+  // Create shared tooltip for card-hover labels
+  useEffect(() => {
+    if (!mapboxLoaded || !mapContainer.current) return;
+    if (tooltip.current) return;
+
+    const el = document.createElement('div');
+    el.style.cssText = `
+      position: absolute;
+      pointer-events: none;
+      opacity: 0;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 600;
+      max-width: 20ch;
+      text-align: center;
+      line-height: 1.1;
+      transform: translate(-50%, -100%);
+      text-shadow:
+        -1px -1px 0 rgba(255,255,255,0.95),
+         1px -1px 0 rgba(255,255,255,0.95),
+        -1px  1px 0 rgba(255,255,255,0.95),
+         1px  1px 0 rgba(255,255,255,0.95),
+         0 0 6px rgba(255,255,255,0.8);
+    `;
+    mapContainer.current.appendChild(el);
+    tooltip.current = el;
+
+    return () => {
+      el.remove();
+      tooltip.current = null;
+    };
+  }, [mapboxLoaded]);
+
   // Update markers and center map when locations change
   useEffect(() => {
     if (!map.current || !mapboxLoaded) return;
 
-    // Don't update markers if user is actively typing in an input field
-    // This prevents focus loss while typing
-    const activeElement = document.activeElement;
-    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-      // User is typing - skip marker update to preserve focus
-      // Markers will update when user finishes typing and input loses focus
-      return;
-    }
-
+    const timer = setTimeout(() => {
     // Store which popup was open before clearing markers (for potential future use)
     // const previouslyOpenLocation = openPopupLocation.current;
 
@@ -331,7 +360,7 @@ const LocationMap: React.FC<LocationMapProps> = ({
         // Track popup open/close events
         popup.on('open', () => {
           openPopupLocation.current = location.name;
-          preventPopupClose.current = false; // Reset prevent flag when popup opens
+          preventPopupClose.current = false;
         });
         
         popup.on('close', () => {
@@ -424,8 +453,7 @@ const LocationMap: React.FC<LocationMapProps> = ({
         markerElement.addEventListener('click', (e) => {
           e.stopPropagation();
           onLocationSelect?.(location.name);
-          // Also open the popup immediately
-          marker.togglePopup();
+          // Popup opening is handled by the selectedLocation useEffect
         });
 
         markers.current.set(location.name, marker);
@@ -459,24 +487,133 @@ const LocationMap: React.FC<LocationMapProps> = ({
       }
     }
 
-  }, [locations, mapboxLoaded, selectedLocation, selectedLocations, locationHasResults]);
+    // Reopen popup for the selected location after markers are recreated
+    if (selectedLocation) {
+      const selMarker = markers.current.get(selectedLocation);
+      if (selMarker && !selMarker.getPopup().isOpen()) {
+        selMarker.togglePopup();
+      }
+    }
 
-  // Handle popup opening when location is selected
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [locations, mapboxLoaded, selectedLocations, locationHasResults]);
+
+  // Handle popup opening/closing and immediate dot appearance when selected location changes
   useEffect(() => {
-    if (!map.current || !selectedLocation || !mapboxLoaded) return;
+    if (!map.current || !mapboxLoaded) return;
 
-    const selectedMarker = markers.current.get(selectedLocation);
-    if (selectedMarker) {
-      // Close any existing popups first
-      markers.current.forEach(marker => {
-        if (marker.getPopup().isOpen()) {
-          marker.togglePopup();
+    // Close all open popups first
+    markers.current.forEach(marker => {
+      if (marker.getPopup().isOpen()) marker.togglePopup();
+    });
+
+    // Revert any hover z-index elevation
+    markers.current.forEach(marker => {
+      const el = marker.getElement();
+      if (!el) return;
+      el.style.zIndex = '';
+      el.style.position = '';
+      if (el.parentElement) el.parentElement.style.zIndex = '';
+    });
+
+    const isMobile = window.innerWidth < 1024;
+
+    // Revert previously selected marker to its unselected appearance
+    const prev = prevSelectedLocation.current;
+    if (prev && prev !== selectedLocation) {
+      const prevMarker = markers.current.get(prev);
+      if (prevMarker) {
+        const el = prevMarker.getElement();
+        if (el) {
+          const size = isMobile ? '16px' : '20px';
+          const isInSelected = selectedLocations.includes(prev);
+          const hasResults = locationHasResults ? locationHasResults(prev) : false;
+          el.style.width = size;
+          el.style.height = size;
+          el.style.backgroundColor = isInSelected && !hasResults ? 'rgb(180, 180, 180)' : 'rgb(149, 214, 247)';
+          el.dataset.baseSize = size;
         }
-      });
-      // Open the popup for the selected marker
+      }
+    }
+
+    // Apply selected appearance to the new marker immediately
+    if (selectedLocation) {
+      const selMarker = markers.current.get(selectedLocation);
+      if (selMarker) {
+        const el = selMarker.getElement();
+        if (el) {
+          const size = isMobile ? '22px' : '26px';
+          const isInSelected = selectedLocations.includes(selectedLocation);
+          const hasResults = locationHasResults ? locationHasResults(selectedLocation) : false;
+          el.style.width = size;
+          el.style.height = size;
+          el.style.backgroundColor = isInSelected && !hasResults ? 'rgb(128, 128, 128)' : 'rgb(20, 161, 255)';
+          el.dataset.baseSize = size;
+        }
+      }
+    }
+
+    prevSelectedLocation.current = selectedLocation ?? null;
+
+    if (!selectedLocation) return;
+
+    // Open popup for the newly selected marker
+    const selectedMarker = markers.current.get(selectedLocation);
+    if (selectedMarker && !selectedMarker.getPopup().isOpen()) {
       selectedMarker.togglePopup();
     }
-  }, [selectedLocation, mapboxLoaded]);
+  }, [selectedLocation, mapboxLoaded, selectedLocations, locationHasResults]);
+
+  // Enlarge marker and show tooltip when user hovers a result card in the sidebar
+  useEffect(() => {
+    const tip = tooltip.current;
+
+    // Hide tooltip if no hovered location
+    if (!hoveredLocation) {
+      if (tip) tip.style.opacity = '0';
+    }
+
+    markers.current.forEach((marker, locationName) => {
+      const el = marker.getElement();
+      if (!el) return;
+      if (locationName === hoveredLocation) {
+        if (!el.dataset.baseSize) el.dataset.baseSize = el.style.width;
+        const enlarged = window.innerWidth < 1024 ? '22px' : '26px';
+        el.style.width = enlarged;
+        el.style.height = enlarged;
+        el.style.boxShadow = '0 3px 8px rgba(0,0,0,0.4)';
+        if (!openPopupLocation.current) {
+          el.style.zIndex = '9999';
+          el.style.position = 'relative';
+          if (el.parentElement) el.parentElement.style.zIndex = '9999';
+        }
+
+        if (tip && mapContainer.current) {
+          if (marker.getPopup()?.isOpen()) {
+            tip.style.transition = 'none';
+            tip.style.opacity = '0';
+          } else {
+            const markerRect = el.getBoundingClientRect();
+            const containerRect = mapContainer.current.getBoundingClientRect();
+            tip.textContent = locationName;
+            tip.style.left = `${markerRect.left - containerRect.left + markerRect.width / 2}px`;
+            tip.style.top = `${markerRect.top - containerRect.top - 3}px`;
+            tip.style.transition = 'none';
+            tip.style.opacity = '0.7';
+          }
+        }
+      } else if (el.dataset.baseSize) {
+        el.style.width = el.dataset.baseSize;
+        el.style.height = el.dataset.baseSize;
+        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+        el.style.zIndex = '';
+        el.style.position = '';
+        if (el.parentElement) el.parentElement.style.zIndex = '';
+      }
+    });
+  }, [hoveredLocation]);
 
   // Update popup content when category changes to reflect highlighting
   useEffect(() => {
