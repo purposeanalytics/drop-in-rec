@@ -86,6 +86,14 @@ export const useAppData = () => {
         const urlMap = createLocationURLMap(geoJSONData);
         const coordsMap = createLocationCoordsMap(geoJSONData);
 
+        // Add City of Toronto URLs for locations missing from the GeoJSON
+        locations.forEach(loc => {
+          const id = String(loc["Location ID"]);
+          if (!urlMap.has(id)) {
+            urlMap.set(id, `https://www.toronto.ca/explore-enjoy/parks-recreation/places-spaces/parks-and-recreation-facilities/location/?id=${id}`);
+          }
+        });
+
         // Fill in coordinates for locations missing from the GeoJSON
         for (const [id, coords] of fallbackCoords) {
           if (!coordsMap.has(id)) coordsMap.set(id, coords);
