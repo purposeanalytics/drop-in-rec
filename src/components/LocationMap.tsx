@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { categories, courseMatchesCategory } from '../services/categories';
 import type { DropInRecord, Location as LocationType } from '../types';
 
@@ -44,7 +44,6 @@ const LocationMap: React.FC<LocationMapProps> = ({
   const openPopupLocation = useRef<string | null>(null);
   const preventPopupClose = useRef<boolean>(false);
   const prevSelectedLocation = useRef<string | null>(null);
-  const tooltip = useRef<HTMLDivElement | null>(null);
 
   // Helper function to get available categories for a location
   const getAvailableCategories = (locationName: string): Array<{ id: string; name: string; icon: string }> => {
@@ -87,6 +86,59 @@ const LocationMap: React.FC<LocationMapProps> = ({
 
 
 
+  const addLabelLayer = useCallback(() => {
+    if (!map.current) return;
+    try {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const textColor = isDark ? '#9ca3af' : '#808080';
+      const haloColor = isDark ? 'rgba(15,23,42,0.85)' : 'rgba(255,255,255,0.9)';
+
+      // Borrow a regular (non-italic) font from the style's own label layers
+      let styleFont = ['Noto Sans Regular', 'Arial Unicode MS Regular'];
+      try {
+        const layers = map.current.getStyle().layers;
+        const lbl = layers.find((l: any) => {
+          if (l.type !== 'symbol' || !l.layout?.['text-field']) return false;
+          const fonts: string[] = l.layout?.['text-font'] ?? [];
+          return fonts.some(f => /regular/i.test(f) && !/italic/i.test(f));
+        });
+        if (lbl?.layout?.['text-font']) styleFont = lbl.layout['text-font'];
+      } catch {}
+
+      if (!map.current.getSource('location-labels')) {
+        map.current.addSource('location-labels', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] }
+        });
+      }
+      if (!map.current.getLayer('location-label-layer')) {
+        map.current.addLayer({
+          id: 'location-label-layer',
+          type: 'symbol',
+          source: 'location-labels',
+          minzoom: 11,
+          layout: {
+            'text-field': ['get', 'name'],
+            'text-font': styleFont,
+            'text-size': 13,
+            'text-anchor': 'top',
+            'text-offset': [0, 1.0],
+            'text-allow-overlap': false,
+            'text-max-width': 8,
+            'text-line-height': 1.1,
+          },
+          paint: {
+            'text-color': textColor,
+            'text-halo-color': haloColor,
+            'text-halo-width': 1.5,
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('Could not add label layer:', e);
+    }
+  }, []);
+
   // Wait for Mapbox to load
   useEffect(() => {
     let attempts = 0;
@@ -127,23 +179,26 @@ const LocationMap: React.FC<LocationMapProps> = ({
       // Add navigation controls
       map.current.addControl(new (window as any).maplibregl.NavigationControl());
       
-      // Force resize after map loads to ensure proper rendering
+      // Force resize and add label layer after map loads
       map.current.on('load', () => {
         setTimeout(() => {
           if (map.current) {
             map.current.resize();
           }
         }, 100);
+        addLabelLayer();
       });
-      
+
       // Listen for dark mode changes
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const handleDarkModeChange = (e: MediaQueryListEvent) => {
         if (map.current) {
-          const newStyle = e.matches 
-            ? 'https://tiles.openfreemap.org/styles/dark-matter' 
+          const newStyle = e.matches
+            ? 'https://tiles.openfreemap.org/styles/dark-matter'
             : 'https://tiles.openfreemap.org/styles/positron';
           map.current.setStyle(newStyle);
+          // Re-add label layer after the new style finishes loading
+          map.current.once('style.load', addLabelLayer);
         }
       };
       
@@ -167,38 +222,6 @@ const LocationMap: React.FC<LocationMapProps> = ({
     }
   }, [mapboxLoaded]);
 
-  // Create shared tooltip for card-hover labels
-  useEffect(() => {
-    if (!mapboxLoaded || !mapContainer.current) return;
-    if (tooltip.current) return;
-
-    const el = document.createElement('div');
-    el.style.cssText = `
-      position: absolute;
-      pointer-events: none;
-      opacity: 0;
-      color: #475569;
-      font-size: 12px;
-      font-weight: 600;
-      max-width: 20ch;
-      text-align: center;
-      line-height: 1.1;
-      transform: translate(-50%, -100%);
-      text-shadow:
-        -1px -1px 0 rgba(255,255,255,0.95),
-         1px -1px 0 rgba(255,255,255,0.95),
-        -1px  1px 0 rgba(255,255,255,0.95),
-         1px  1px 0 rgba(255,255,255,0.95),
-         0 0 6px rgba(255,255,255,0.8);
-    `;
-    mapContainer.current.appendChild(el);
-    tooltip.current = el;
-
-    return () => {
-      el.remove();
-      tooltip.current = null;
-    };
-  }, [mapboxLoaded]);
 
   // Update markers and center map when locations change
   useEffect(() => {
@@ -500,6 +523,35 @@ const LocationMap: React.FC<LocationMapProps> = ({
     return () => clearTimeout(timer);
   }, [locations, mapboxLoaded, selectedLocations, locationHasResults]);
 
+  // Keep label source data in sync with the current location list
+  useEffect(() => {
+    if (!map.current || !mapboxLoaded) return;
+
+    const update = () => {
+      if (!map.current) return;
+      // Ensure the layer exists before trying to update its source
+      addLabelLayer();
+      const source = map.current.getSource('location-labels') as any;
+      if (!source) return;
+      source.setData({
+        type: 'FeatureCollection',
+        features: locations
+          .filter(l => l.lat && l.lng)
+          .map(l => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [l.lng, l.lat] },
+            properties: { name: l.name }
+          }))
+      });
+    };
+
+    if (map.current.isStyleLoaded()) {
+      update();
+    } else {
+      map.current.once('style.load', update);
+    }
+  }, [locations, mapboxLoaded, addLabelLayer]);
+
   // Handle popup opening/closing and immediate dot appearance when selected location changes
   useEffect(() => {
     if (!map.current || !mapboxLoaded) return;
@@ -566,15 +618,8 @@ const LocationMap: React.FC<LocationMapProps> = ({
     }
   }, [selectedLocation, mapboxLoaded, selectedLocations, locationHasResults]);
 
-  // Enlarge marker and show tooltip when user hovers a result card in the sidebar
+  // Enlarge marker when user hovers a result card in the sidebar
   useEffect(() => {
-    const tip = tooltip.current;
-
-    // Hide tooltip if no hovered location
-    if (!hoveredLocation) {
-      if (tip) tip.style.opacity = '0';
-    }
-
     markers.current.forEach((marker, locationName) => {
       const el = marker.getElement();
       if (!el) return;
@@ -588,21 +633,6 @@ const LocationMap: React.FC<LocationMapProps> = ({
           el.style.zIndex = '9999';
           el.style.position = 'relative';
           if (el.parentElement) el.parentElement.style.zIndex = '9999';
-        }
-
-        if (tip && mapContainer.current) {
-          if (marker.getPopup()?.isOpen()) {
-            tip.style.transition = 'none';
-            tip.style.opacity = '0';
-          } else {
-            const markerRect = el.getBoundingClientRect();
-            const containerRect = mapContainer.current.getBoundingClientRect();
-            tip.textContent = locationName;
-            tip.style.left = `${markerRect.left - containerRect.left + markerRect.width / 2}px`;
-            tip.style.top = `${markerRect.top - containerRect.top - 3}px`;
-            tip.style.transition = 'none';
-            tip.style.opacity = '0.7';
-          }
         }
       } else if (el.dataset.baseSize) {
         el.style.width = el.dataset.baseSize;
