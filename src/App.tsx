@@ -47,6 +47,11 @@ function App() {
   const [hoveredLocation, setHoveredLocation] = useState<string | null>(null);
   const [showWOD, setShowWOD] = useState(false);
 
+  // Close WOD modal when the user changes any search filter
+  useEffect(() => {
+    setShowWOD(false);
+  }, [filters]);
+
   // Easter egg: type "gianni" while Wallace Emerson is selected (via search or map marker)
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
@@ -317,6 +322,9 @@ function App() {
               courseTitles={allCourseTitles}
               locations={availableLocationNames}
               allLocations={allLocations}
+              onProgramInput={(value) => {
+                if (value.toLowerCase().includes('wesharks')) setShowWOD(true);
+              }}
             />
             <div className="flex-1 min-h-0 lg:block hidden">
               <SearchResults

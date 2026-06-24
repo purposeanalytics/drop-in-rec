@@ -14,6 +14,7 @@ interface SearchFormProps {
   courseTitles: string[];
   locations: string[];
   allLocations: any[];
+  onProgramInput?: (value: string) => void;
 }
 
 const SearchForm: React.FC<SearchFormProps> = ({
@@ -24,7 +25,8 @@ const SearchForm: React.FC<SearchFormProps> = ({
   allDropIns,
   courseTitles,
   locations,
-  allLocations
+  allLocations,
+  onProgramInput
 }) => {
   const {
     searchInputs,
@@ -117,7 +119,7 @@ const SearchForm: React.FC<SearchFormProps> = ({
             placeholder="Find a program" 
             type="text"
             value={searchInputs.program}
-            onChange={(e) => handleSearchInputChange('program', e.target.value)}
+            onChange={(e) => { handleSearchInputChange('program', e.target.value); onProgramInput?.(e.target.value); }}
             onKeyDown={(e) => handleKeyPress(e, 'program')}
             onFocus={() => setShowProgramDropdown(true)}
             onBlur={() => setTimeout(() => setShowProgramDropdown(false), 150)}
