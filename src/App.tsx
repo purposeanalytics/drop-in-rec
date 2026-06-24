@@ -323,7 +323,9 @@ function App() {
               locations={availableLocationNames}
               allLocations={allLocations}
               onProgramInput={(value) => {
-                if (value.toLowerCase().includes('wesharks')) setShowWOD(true);
+                const LOCATION = 'Wallace Emerson Community Recreation Centre';
+                const wallaceActive = filters.location.includes(LOCATION) || selectedLocation === LOCATION;
+                if (wallaceActive && value.toLowerCase().includes('wesharks')) setShowWOD(true);
               }}
             />
             <div className="flex-1 min-h-0 lg:block hidden">
