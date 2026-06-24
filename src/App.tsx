@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import SearchForm from './components/SearchForm';
 import SearchResults from './components/SearchResults';
 import LocationMap from './components/LocationMap';
 import AppHeader from './components/AppHeader';
 import LoadingScreen from './components/LoadingScreen';
 import ErrorScreen from './components/ErrorScreen';
+import { WODModal } from './components/WODModal';
 import { useAppData } from './hooks/useAppData';
 import { useSearchLogic } from './hooks/useSearchLogic';
 import { categories } from './services/categories';
@@ -44,6 +45,41 @@ function App() {
   } = useSearchLogic(allDropIns, allLocations, locationURLMap, locationAddressMap, locationPhoneMap, locationCoordsMap);
 
   const [hoveredLocation, setHoveredLocation] = useState<string | null>(null);
+  const [showWOD, setShowWOD] = useState(false);
+
+  // Easter egg: type "gianni" while Wallace Emerson is selected (via search or map marker)
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+  const selectedLocationRef = useRef(selectedLocation);
+  selectedLocationRef.current = selectedLocation;
+  useEffect(() => {
+    const SECRET = 'wesharks';
+    const LOCATION = 'Wallace Emerson Community Recreation Centre';
+    let buffer = '';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const wallaceActive =
+        filtersRef.current.location.includes(LOCATION) ||
+        selectedLocationRef.current === LOCATION;
+      if (!wallaceActive) {
+        buffer = '';
+        return;
+      }
+      if (e.key.length === 1) {
+        buffer += e.key.toLowerCase();
+        if (buffer.length > SECRET.length) buffer = buffer.slice(-SECRET.length);
+        if (buffer === SECRET) {
+          setShowWOD(true);
+          buffer = '';
+        }
+      } else if (!['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) {
+        buffer = '';
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
   const locationHasResults = useCallback(
     (locationName: string) => results.some(result => result.location === locationName),
     [results]
@@ -332,6 +368,8 @@ function App() {
           </main>
         </div>
       </div>
+
+      <WODModal isOpen={showWOD} onClose={() => setShowWOD(false)} />
       </div>
   );
 }
