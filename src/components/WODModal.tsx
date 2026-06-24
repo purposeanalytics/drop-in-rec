@@ -36,54 +36,23 @@ type Phase = 'idle' | 'typing' | 'visible';
 export const WODModal: React.FC<WODModalProps> = ({ isOpen, onClose }) => {
   const [idx, setIdx] = useState(todayIdx);
   const [phase, setPhase] = useState<Phase>('idle');
-  const [animKey, setAnimKey] = useState(0);
-  // How many items have been revealed (0 = nothing yet)
-  const [visibleCount, setVisibleCount] = useState(0);
-
-  const phaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lineTimerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function startTyping(newIdx: number) {
-    if (phaseTimerRef.current) clearTimeout(phaseTimerRef.current);
-    if (lineTimerRef.current)  clearInterval(lineTimerRef.current);
+    if (timerRef.current) clearTimeout(timerRef.current);
     setIdx(newIdx);
-    setVisibleCount(0);
     setPhase('typing');
-    phaseTimerRef.current = setTimeout(() => {
-      setAnimKey(k => k + 1);
-      setPhase('visible');
-    }, 900);
+    timerRef.current = setTimeout(() => setPhase('visible'), 900);
   }
-
-  // Start revealing lines once visible
-  useEffect(() => {
-    if (phase !== 'visible') return;
-    setVisibleCount(0);
-    const lines = workouts[idx].text.split('\n');
-    // Items: 1 header + N lines + 1 timestamp = lines.length + 2
-    const total = lines.length + 2;
-    lineTimerRef.current = setInterval(() => {
-      setVisibleCount(c => {
-        if (c + 1 >= total) clearInterval(lineTimerRef.current!);
-        return c + 1;
-      });
-    }, 100);
-    return () => { if (lineTimerRef.current) clearInterval(lineTimerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animKey]);
 
   useEffect(() => {
     if (isOpen) {
       startTyping(todayIdx());
     } else {
-      if (phaseTimerRef.current) clearTimeout(phaseTimerRef.current);
-      if (lineTimerRef.current)  clearInterval(lineTimerRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
       setPhase('idle');
     }
-    return () => {
-      if (phaseTimerRef.current) clearTimeout(phaseTimerRef.current);
-      if (lineTimerRef.current)  clearInterval(lineTimerRef.current);
-    };
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [isOpen]);
 
   useEffect(() => {
@@ -103,8 +72,6 @@ export const WODModal: React.FC<WODModalProps> = ({ isOpen, onClose }) => {
 
   const workout = workouts[idx];
   const lines = workout.text.split('\n');
-  // total renderable items: header (0), text lines (1…N), timestamp (N+1)
-  const totalItems = lines.length + 2;
 
   return (
     <>
@@ -154,6 +121,7 @@ export const WODModal: React.FC<WODModalProps> = ({ isOpen, onClose }) => {
         {/* Body */}
         <div className="px-5 pt-4 pb-5 flex flex-col gap-0">
 
+          {/* Typing indicator */}
           {phase === 'typing' && (
             <div className="flex items-center gap-1.5 py-2">
               <span className="wod-tdot" />
@@ -162,66 +130,53 @@ export const WODModal: React.FC<WODModalProps> = ({ isOpen, onClose }) => {
             </div>
           )}
 
+          {/* Full message */}
           {phase === 'visible' && (
-            <>
-              {/* Item 0: name + distance */}
-              {visibleCount > 0 && (
-                <div className="wod-line flex items-baseline justify-between gap-3 mb-4">
-                  <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 leading-tight">{workout.name}</h3>
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap flex-shrink-0">
-                    {workout.distance.toLocaleString()} m
-                  </span>
-                </div>
-              )}
+            <div className="wod-line flex flex-col gap-0">
+              {/* Name + distance */}
+              <div className="flex items-baseline justify-between gap-3 mb-4">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 leading-tight">{workout.name}</h3>
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap flex-shrink-0">
+                  {workout.distance.toLocaleString()} m
+                </span>
+              </div>
 
-              {/* Items 1…N: workout lines */}
+              {/* Workout lines */}
               <div className="text-sm leading-relaxed">
                 {lines.map((line, i) => {
-                  if (visibleCount <= i + 1) return null;
                   const kind = classifyLine(line);
                   if (kind === 'blank') return <div key={i} className="h-3" />;
                   if (kind === 'head') return (
-                    <div key={i} className="wod-line text-[#13a4ec] text-xs font-semibold uppercase tracking-widest pt-1">
+                    <div key={i} className="text-[#13a4ec] text-xs font-semibold uppercase tracking-widest pt-1">
                       {line.trim()}
                     </div>
                   );
                   if (kind === 'note') return (
-                    <div key={i} className="wod-line text-slate-400 dark:text-slate-500 text-xs italic">
+                    <div key={i} className="text-slate-400 dark:text-slate-500 text-xs italic">
                       {line.trim().slice(1)}
                     </div>
                   );
                   return (
-                    <div key={i} className="wod-line text-slate-700 dark:text-slate-300">
+                    <div key={i} className="text-slate-700 dark:text-slate-300">
                       {line}
                     </div>
                   );
                 })}
               </div>
 
-              {/* Typing dots — shown below last line while still populating */}
-              {visibleCount < totalItems && (
-                <div className="flex items-center gap-1.5 py-2">
-                  <span className="wod-tdot" />
-                  <span className="wod-tdot" />
-                  <span className="wod-tdot" />
+              {/* Timestamp + button */}
+              <div className="mt-4 flex flex-col gap-3">
+                <div className="text-xs text-slate-400 dark:text-slate-500">
+                  Originally from {formatPostedAt(workout.postedAt)}
                 </div>
-              )}
-
-              {/* Item N+1: timestamp + button */}
-              {visibleCount >= totalItems && (
-                <div className="wod-line mt-4 flex flex-col gap-3">
-                  <div className="text-xs text-slate-400 dark:text-slate-500">
-                    Originally from {formatPostedAt(workout.postedAt)}
-                  </div>
-                  <button
-                    onClick={pickDifferent}
-                    className="w-full inline-flex items-center justify-center rounded-lg bg-[#13a4ec]/10 dark:bg-[#13a4ec]/20 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-[#13a4ec] hover:text-white transition-colors duration-200 ease-in-out"
-                  >
-                    Give me a different workout
-                  </button>
-                </div>
-              )}
-            </>
+                <button
+                  onClick={pickDifferent}
+                  className="w-full inline-flex items-center justify-center rounded-lg bg-[#13a4ec]/10 dark:bg-[#13a4ec]/20 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-[#13a4ec] hover:text-white transition-colors duration-200 ease-in-out"
+                >
+                  Give me a different workout
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
