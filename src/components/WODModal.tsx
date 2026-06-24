@@ -95,11 +95,11 @@ export const WODModal: React.FC<WODModalProps> = ({ isOpen, onClose }) => {
       <div
         className={`
           fixed z-50
-          inset-0
+          inset-4
           lg:inset-auto lg:bottom-0 lg:w-[400px]
           lg:left-[calc(50%+230px)] lg:-translate-x-1/2
           bg-white dark:bg-slate-800
-          shadow-2xl rounded-t-2xl
+          shadow-2xl rounded-2xl lg:rounded-b-none lg:rounded-t-2xl
           overflow-y-auto
           lg:max-h-[90vh]
           transition-transform duration-500 ease-out
