@@ -194,5 +194,19 @@
     "distance": 2000,
     "named": false,
     "text": "MAIN\n400 swim ez\n4×100 pull @1:45\n\n300 swim med\n3×100 pull @1:45\n\n200 swim hard\n2×100 pull @1:45\n\n100 swim ez\n100 pull ez"
+  },
+  {
+    "postedAt": "2026-06-24T21:27-04:00",
+    "name": "Season Finale",
+    "distance": 3000,
+    "named": false,
+    "text": "W/U\n300 swim\n200 pull\n100 kick\n\nMAIN\n9×[5×50]\n1. @1:00 pull\n2. @55 swim\n3. @50 pull\n4. @45\n5. @40\n6. @45\n7. @50 pull\n8. @55 swim\n9. @1:00 pull\n\nFINISHER\n6×25 no breath (JJ special)"
+  },
+  {
+    "postedAt": "2026-06-24T23:34-04:00",
+    "name": "5× Fast / Pull",
+    "distance": 2000,
+    "named": false,
+    "text": "W/U\n200 swim\n100 pull\n200 swim\n100 kick\n\nMAIN\n5×\n\n100 fast\n75 pull ez\n50 fast\n25 pull ez\n\n*30 sec. rest\n\nFINISHER\n6×25 DPS"
   }
 ]
